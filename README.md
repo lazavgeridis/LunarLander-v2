@@ -8,4 +8,4 @@ environment. For the time being, there are implementations for:
 
 # Training Clips
 This one is for mc at around 3000 episodes...  
-![mc-3000eps](mc_3000eps.gif)
+![mc-3000eps](mc_3000.gif)
