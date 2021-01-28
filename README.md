@@ -5,3 +5,7 @@ environment. For the time being, there are implementations for:
 2. Sarsa
 3. Q-learning
 4. DQN
+
+# Training Clips
+This one is for mc at around 3000 episodes...  
+![](mc_3000eps.mkv)
