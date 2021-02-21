@@ -10,6 +10,7 @@ Solved is 200 points.
 """
 
 import gym
+import torch
 import collections
 from utils import *
 from exp_replay_memory import *
@@ -209,18 +210,29 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps):
 
 
 def dqn_lander(env, total_timesteps, gamma, lr, min_eps, memory_capacity=50000, train_freq=1, batch_size=32, learning_starts=1000, target_network_update_freq=500):
-    q_network = build_qnetwork()
-    q_target_network = build_qnetwork()
+    # decide which device we want to run on
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    loss_function = torch.nn.MSELoss(reduction='sum')
+
+    # set up the 2 q-networks, their optimizers and replay memory
+    qnet, qnet_optim = build_qnetwork(env.action_space.n)
+    qnet.to(device)
+    #qnet.train()
+    qtarget_net, qtarget_net_optim = build_qnetwork(env.action_space.n)
+    qtarget_net.to(device)
+    #qtarget_net.eval()
     replay_memory = ReplayMemory(memory_capacity)
+
     epsilon = 1.0
     return_per_ep = [0.0]
 
     curr_state = env.reset()
+
     for t in range(total_timesteps):
 
         # choose action A using behaviour policy -> ε-greedy
         # using q_network
-        action = epsilon_greedy(q_network, curr_state, epsilon, env.action_space.n)
+        action = epsilon_greedy(q_net, curr_state, epsilon, env.action_space.n)
         # take action A, earn immediate reward R and land into next state S'
         next_state, reward, done, _ = env.step(action)
         # store transition (S, A, R, S', Done) in replay memory
@@ -238,11 +250,22 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, memory_capacity=50000, 
         # sample a random mini-batch and update q_network's (probably) parameters
         if t > learning_starts and t % train_freq == 0:
             states, actions, rewards, next_states, dones = replay_memory.sample_minibatch(batch_size)
-            qlearning_targets   = compute_targets(q_target_network, rewards, next_states, gamma, env.action_space.n)
-            qlearning_estimates = compute_estimates(q_network, states, actions) 
-            # train q_network here -- where are dones used? --
 
+            td_errors = fit(qnet, \
+                            qnet_optim, \
+                            qtarget_net, \
+                            qtarget_net_optim, \
+                            loss_function, \
+                            states, \
+                            actions, \
+                            rewards, \
+                            next_states, \
+                            dones, \
+                            gamma, \
+                            env.action_space.n)
+
+        # periodically update q-target network's parameters
         if t > learning_starts and t % target_network_update_freq == 0:
-            #update_target_network()
+            update_target_network(qnet, qtarget_net)
 
     return return_per_ep
