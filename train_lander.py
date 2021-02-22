@@ -3,6 +3,7 @@ import sys
 import argparse
 from rl_landers import *
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 AGENTS_LIST = ["random", "monte-carlo", "sarsa", "q-learning", "dqn"]
@@ -56,9 +57,14 @@ def main():
 
     environment.close()
 
+    n = int(args.n_episodes / 100)
     for agent, agent_total_returns in zip(chosen_agents, agents_returns):
         print("\n{} lander average reward = {}".format(agent, sum(agent_total_returns) / args.n_episodes))
-        plt.plot(range(args.n_episodes), agent_total_returns)
+        l = []
+        for j in range(n):
+            l.append(round(np.mean(agent_total_returns[j * 100 : (j + 1) * 100]), 1))
+        plt.plot(range(int(args.n_episodes / 100)), l)
+
 
     plt.xlabel("Episodes")
     plt.ylabel("Reward per episode")
