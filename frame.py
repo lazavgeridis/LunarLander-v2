@@ -4,6 +4,7 @@ import random
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import cv2
 from collections import namedtuple
 from itertools import count
 from PIL import Image
@@ -16,13 +17,6 @@ import torchvision.transforms as T
 
 
 env = gym.make('LunarLander-v2').unwrapped
-
-# set up matplotlib
-is_ipython = 'inline' in matplotlib.get_backend()
-if is_ipython:
-    from IPython import display
-
-plt.ion()
 
 # if gpu is to be used
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -40,15 +34,24 @@ def get_cart_location(screen_width):
 def get_screen():
     # Returned screen requested by gym is 400x600x3, but is sometimes larger
     # such as 800x1200x3. Transpose it into torch order (CHW).
-    screen = env.render(mode='rgb_array').transpose((2, 0, 1))
+    #screen = env.render(mode='rgb_array').transpose((2, 0, 1))
+    screen = env.render(mode='rgb_array')
+    print(screen)
     print(screen.shape)
+
+    frame = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
+    frame = cv2.resize(frame, (84, 84), interpolation=cv2.INTER_AREA)
+    frame = np.expand_dims(frame, -1)
+    print(frame.shape)
+
+    return screen, frame
 
     # Cart is in the lower half, so strip off the top and bottom of the screen
     # (400, 600)
-    _, screen_height, screen_width = screen.shape
-    print(f"H:{screen_height}. W:{screen_width}")
+    #_, screen_height, screen_width = screen.shape
+    #print(f"H:{screen_height}. W:{screen_width}")
     #screen = screen[:, int(screen_height*0.4):int(screen_height * 0.8)]
-    screen = screen[:, :, int(screen_width * ):int(screen_width * )]
+
     #view_width = int(screen_width * 0.6)
     #cart_location = get_cart_location(screen_width)
     #if cart_location < view_width // 2:
@@ -69,8 +72,10 @@ def get_screen():
 
 
 env.reset()
-get_screen()
-#plt.figure()
+og_frame, new_frame = get_screen()
+plt.figure()
+#plt.imshow(og_frame)
+plt.imshow(new_frame)
 #plt.imshow(get_screen().cpu().squeeze(0).permute(1, 2, 0).numpy(), interpolation='none')
-#plt.title('Example extracted screen')
-#plt.show()
+plt.title('Example extracted screens')
+plt.show()
