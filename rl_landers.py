@@ -22,7 +22,7 @@ render_freq: int
     render the environment every 'render_freq' episodes
 """
 
-def random_lander(env, n_episodes, render_freq=20):
+def random_lander(env, n_episodes, print_freq=20, render_freq=20):
     return_per_ep = [0.0]
 
     for i in range(n_episodes):
@@ -41,8 +41,9 @@ def random_lander(env, n_episodes, render_freq=20):
             return_per_ep[-1] += reward
     
             if done:
-                print("Episode finished after {} timesteps".format(t + 1))
-                print("Episode {}: Total return {}\n".format(i + 1, return_per_ep[-1]))
+                if (i + 1) % print_freq == 0:
+                    print("Episode finished after {} timesteps".format(t + 1))
+                    print("Episode {}: Total return {}\n".format(i + 1, return_per_ep[-1]))
                 return_per_ep.append(0.0)
 
                 break
@@ -53,13 +54,14 @@ def random_lander(env, n_episodes, render_freq=20):
     return return_per_ep
 
 
-def mc_lander(env, n_episodes, gamma, min_eps, render_freq=20):
+def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     n_visits = collections.defaultdict(int)     # note that the first insertion of a key initializes its value to 0
     return_per_ep = [0.0]
     episode_qstates = []
     episode_return = []
     epsilon = 1.0
+    num_actions = env.action_space.n
 
     for i in range(n_episodes):
         total_return = 0
@@ -75,7 +77,7 @@ def mc_lander(env, n_episodes, gamma, min_eps, render_freq=20):
                 env.render()
 
             # choose action A using ε-greedy policy
-            action = epsilon_greedy(q_states, curr_state, epsilon, env.action_space.n)
+            action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
     
             # take action A, earn immediate reward and land into next state S'
             observation, reward, done, info = env.step(action)
@@ -90,10 +92,11 @@ def mc_lander(env, n_episodes, gamma, min_eps, render_freq=20):
             episode_return.append(reward)
     
             if done:
-                print("Episode finished after {} timesteps".format(t+1))
-                print("Episode {}: Total return {}".format(i + 1, return_per_ep[-1]))
-                print("Total keys in q_states dictionary = {}".format(len(q_states)))
-                print("Total keys in n_visits dictionary = {}\n".format(len(n_visits)))
+                if (i + 1) % print_freq == 0:
+                    print("Episode finished after {} timesteps".format(t+1))
+                    print("Episode {}: Total return {}".format(i + 1, return_per_ep[-1]))
+                    print("Total keys in q_states dictionary = {}".format(len(q_states)))
+                    print("Total keys in n_visits dictionary = {}\n".format(len(n_visits)))
     
                 # improve policy only when episode is completed
                 # policy evaluation step
@@ -113,10 +116,11 @@ def mc_lander(env, n_episodes, gamma, min_eps, render_freq=20):
     return return_per_ep
 
 
-def sarsa_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
+def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq=20):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
+    num_actions = env.action_space.n
     
     for i in range(n_episodes):
         t = 0
@@ -128,7 +132,7 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
         # Current State: S
         # Choose A using policy π
         curr_state = discretize_state(env.reset())
-        action = epsilon_greedy(q_states, curr_state, epsilon, env.action_space.n)
+        action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
         
         while True:
             if render:
@@ -144,7 +148,8 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
 
             # Next State: S'
             # Choose A' using policy π
-            next_action = epsilon_greedy(q_states, next_state, epsilon, env.action_space.n)
+            next_action = epsilon_greedy(q_states, next_state, epsilon,
+                    num_actions)
 
             # create (S', A') pair
             new_qstate = next_state + (next_action, )
@@ -160,9 +165,10 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
             return_per_ep[-1] += reward
 
             if done:
-                print("Episode finished after {} timesteps".format(t + 1))
-                print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
-                print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
+                if (i + 1) % print_freq == 0:
+                    print("Episode finished after {} timesteps".format(t + 1))
+                    print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
+                    print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
 
                 epsilon = decay_epsilon(epsilon, min_eps)
                 return_per_ep.append(0.0)
@@ -176,10 +182,11 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
     return return_per_ep
 
 
-def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
+def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq=20):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
+    num_actions = env.action_space.n
     
     for i in range(n_episodes):
         t = 0
@@ -196,7 +203,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
                 env.render()
 
             # choose action A using behaviour policy -> ε-greedy
-            action = epsilon_greedy(q_states, curr_state, epsilon, env.action_space.n)
+            action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
 
             # Create (S, A) pair
             qstate = curr_state + (action, )
@@ -209,7 +216,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
             ###################################################################
             # Policy evaluation step
             if not done:
-                q_states[qstate] += lr * (reward + gamma * greedy(q_states, next_state, env.action_space.n) - q_states[qstate]) # (S', A') non terminal state
+                q_states[qstate] += lr * (reward + gamma * greedy(q_states, next_state, num_actions) - q_states[qstate]) # (S', A') non terminal state
             else:
                 q_states[qstate] += lr * (reward - q_states[qstate])    # (S', A') terminal state
             ###################################################################
@@ -217,9 +224,10 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
             return_per_ep[-1] += reward
 
             if done:
-                print("Episode finished after {} timesteps".format(t + 1))
-                print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
-                print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
+                if (i + 1) % print_freq == 0:
+                    print("Episode finished after {} timesteps".format(t + 1))
+                    print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
+                    print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
 
                 epsilon = decay_epsilon(epsilon, min_eps)
                 return_per_ep.append(0.0)
@@ -235,7 +243,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
 def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
                 memory_capacity=50000, train_freq=1, batch_size=32, \
                 learning_starts=1000, target_network_update_freq=500, \
-                print_freq=10, checkpoint_freq=10000):
+                print_freq=20, checkpoint_freq=10000):
     """
     print_freq: int
         how often to print out training progress
@@ -255,11 +263,13 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
     # path to save q-network as it is improving its estimated q-values
     PATH = "./models/"
 
+    num_actions = env.action_space.n
+
     # set up the 2 q-networks, their optimizers and replay memory
-    qnet, qnet_optim = build_qnetwork(env.action_space.n, lr)
+    qnet, qnet_optim = build_qnetwork(num_actions, lr)
     qnet.to(device)
     qnet.train()
-    qtarget_net, _ = build_qnetwork(env.action_space.n, lr)
+    qtarget_net, _ = build_qnetwork(num_actions, lr)
     qtarget_net.load_state_dict(qnet.state_dict())
     qtarget_net.to(device)
     qtarget_net.eval()
@@ -275,19 +285,17 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
     for t in range(total_timesteps * 10):
 
         # choose action A using behaviour policy -> ε-greedy; use q-network
-        action = epsilon_greedy(qnet, curr_frame, epsilon, env.action_space.n, device)
+        action = epsilon_greedy(qnet, curr_frame, epsilon, num_actions)
         # take action A, earn immediate reward R and land into next state S'
-        _, reward, done, _ = env.step(action.item())
-        reward = torch.tensor([reward], device=device)
-        done = torch.tensor([float(done)], device=device)
+        _, reward, done, _ = env.step(action)
 
         next_frame = get_frame(env, device)
 
         # store transition (S, A, R, S', Done) in replay memory
-        replay_memory.store(curr_frame, action, reward, next_frame, done)
+        replay_memory.store(curr_frame, action, float(reward), next_frame, float(done))
 
         curr_frame = next_frame
-        return_per_ep[-1] += reward.item()
+        return_per_ep[-1] += reward
 
         if done:
             curr_state = env.reset()
@@ -295,10 +303,8 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
             return_per_ep.append(0.0)
             epsilon = decay_epsilon(epsilon, min_eps)
 
-        # if replay memory currently stores > 'learning_starts' transitions,
-        # sample a random mini-batch and update q_network's parameters
+        # if replay memory currently stores > 'learning_starts' transitions, sample a random mini-batch and update q_network's parameters
         if t > learning_starts and t % train_freq == 0:
-            print("Updating q-network...")
             frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
 
             fit(qnet, \
@@ -311,7 +317,8 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
                 next_frames, \
                 dones, \
                 gamma, \
-                env.action_space.n)
+                num_actions, 
+                device)
 
         # periodically update q-target network's parameters
         if t > learning_starts and t % target_network_update_freq == 0:
@@ -321,7 +328,7 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
         mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
 
         if done and print_freq is not None and num_episodes % print_freq == 0:
-            print("Time-steps: ", t)
+            print("\nTime-steps: ", t)
             print("Episodes: ", num_episodes)
             print("Mean 100 episode reward: ", mean_100ep_reward)
 

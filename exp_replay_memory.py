@@ -26,7 +26,7 @@ class ReplayMemory(object):
     def sample_minibatch(self, batch_size):
         states, actions, rewards, next_states, dones = [], [], [], [], []
         for _ in range(batch_size):
-            transition_index = random.randint(0, self.length())
+            transition_index = random.randint(0, self.length() - 1)
             transition = self.transitions[transition_index]
             state, action, reward, next_state, done = transition
             states.append(state)

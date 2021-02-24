@@ -19,23 +19,17 @@ def discretize_state(state):
     return discrete_state
 
 
-def epsilon_greedy(qstates_dict, state, eps, env_actions):
+def epsilon_greedy(q_func, state, eps, env_actions):
     prob = np.random.random()
 
     if prob < eps:
         return random.choice(range(env_actions))
     else:
-        qvals = [qstates_dict[state + (action, )] for action in range(env_actions)]
-        return np.argmax(qvals)
-
-
-def epsilon_greedy(qnetwork, frame, eps, env_actions, device):
-    prob = np.random.random()
-
-    if prob < eps:
-        return torch.tensor([[random.randrange(env_actions)]], device=device, dtype=torch.long)
-    else:
-        return qnetwork(frame).max(1)[1].view(1, 1)
+        if isinstance(q_func, DQN):
+            return q_func(state).max(1)[1].item()
+        else:
+            qvals = [q_func[state + (action, )] for action in range(env_actions)]
+            return np.argmax(qvals)
 
 
 def greedy(qstates_dict, state, env_actions):
@@ -67,8 +61,7 @@ def get_frame(env, device):
     frame = np.expand_dims(frame, -1)   # convert into shape (84, 84, 1)
     frame = frame.transpose((2, 0, 1))  # convert into torch shape (C, H, W) -> (1, 84, 84)
  
-    ## Convert to float, rescale, convert to torch tensor
-    ## (this doesn't require a copy)
+    # Convert to float, rescale, convert to torch tensor (this doesn't require a copy)
     #frame = frame.astype(np.float)
     frame = np.ascontiguousarray(frame, dtype=np.float32) / 255
     frame = torch.from_numpy(frame)
@@ -84,29 +77,27 @@ def build_qnetwork(env_actions, learning_rate):
 
 def fit(qnet, qnet_optim, qtarget_net, loss_func, 
         frames, actions, rewards, next_frames, dones, 
-        gamma, env_actions):
+        gamma, env_actions, device):
 
     # compute action-value for frames at timestep t using q-network
     frames_t = torch.cat(frames)
-    actions = torch.cat(actions)
+    actions = torch.tensor(actions, device=device)
     q_t = qnet(frames_t)
     q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1) # the resulting tensor has size (batch, env_actions)
 
     # compute td targets for frames at timestep t + 1 using q-target network
-    dones = torch.cat(dones)
-    rewards = torch.cat(rewards)
+    dones = torch.tensor(dones, device=device)
+    rewards = torch.tensor(rewards, device=device)
     frames_tp1 = torch.cat(next_frames)
-    q_tp1 = qtarget_net(frames_tp1).detach()
-    q_tp1_best = torch.max(q_tp1, 1) # again, the resulting tensor has size (batch, env_actions)
-    ones = torch.ones(dones.size(-1), device="cuda:0")
+    q_tp1_best = qtarget_net(frames_tp1).max(1)[0].detach() # again, the resulting tensor has size (batch, env_actions)
+    ones = torch.ones(dones.size(-1), device=device)
+    dones_mask = ones - dones
     q_tp1_best = (ones - dones) * q_tp1_best
     q_targets = rewards + gamma * q_tp1_best
 
     loss = loss_func(q_targets, q_t_selected)
     qnet_optim.zero_grad()
     loss.backward()
-
-    # update q-network's weights
     qnet_optim.step()
 
 

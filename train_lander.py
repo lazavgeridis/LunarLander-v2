@@ -13,14 +13,19 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--agents', '--list', nargs='+', help='algorithm(s) of choice to train lander', required=True)
     parser.add_argument('--n_episodes', type=int, help='number of training episodes', required=True)
-    parser.add_argument('--lr', type=float, help='learning rate used in sarsa, q-learning', required=True)
-    parser.add_argument('--gamma', type=float, help='discount factor', required=True)
+    parser.add_argument('--lr', type=float, help='learning rate used in sarsa, q-learning, dqn', required=True)
+    parser.add_argument('--gamma', type=float, help='discount factor, should be 0 < gamma < 1', required=True)
+    parser.add_argument('--final_eps', type=float, help='decay epsilon unti it reaches its \'final_eps\' value', required=True)
     args = parser.parse_args()
+
+    for agent in args.agents:
+        if agent not in AGENTS_LIST:
+            print("Invalid algorithm...\nValid options: {}".format(AGENTS_LIST), file=sys.stderr)
+            sys.exit(-1)
 
     environment = gym.make("LunarLander-v2")
     chosen_agents = []
     agents_returns = []
-    min_epsilon = 0.01
 
     for agent in args.agents:
         if agent == "random":
@@ -30,27 +35,23 @@ def main():
 
         elif agent == "monte-carlo":
             print("\nTraining Monte-Carlo lander ...")
-            total_rewards = mc_lander(environment, args.n_episodes, args.gamma, min_epsilon)
+            total_rewards = mc_lander(environment, args.n_episodes, args.gamma, args.final_eps)
             print("Done!")
 
         elif agent == "sarsa":
             print("\nTraining Sarsa lander ...")
-            total_rewards  = sarsa_lander(environment, args.n_episodes, args.gamma, args.lr, min_epsilon)
+            total_rewards  = sarsa_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
 
         elif agent == "q-learning":
             print("\nTraining Q-learning lander ...")
-            total_rewards = qlearning_lander(environment, args.n_episodes, args.gamma, args.lr, min_epsilon)
+            total_rewards = qlearning_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
 
         elif agent == "dqn":
             print("\nTraining dqn lander ...")
-            total_rewards = dqn_lander(environment, args.n_episodes, args.gamma, args.lr, min_epsilon)
+            total_rewards = dqn_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
-
-        else:
-            print("Invalid lander...\nValid options: {}".format(AGENTS_LIST), file=sys.stderr)
-            sys.exit(-1)
 
         chosen_agents.append(agent)
         agents_returns.append(total_rewards)
