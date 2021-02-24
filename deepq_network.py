@@ -1,24 +1,34 @@
-import torch
 import torch.nn as nn
-import torch.optim as optim
+import torch.nn.functional as F
 
-#class DQN(nn.Module):
-#
-#    def __init__(self, env_actions):
-#        super(DQN, self).__init__()
-#        # input: an observation vector
-#        self.conv1 = nn.Conv2d(1, 16, kernel_size=, stride=)
-#        self.conv2 = nn.Conv2d(16, 32, kernel_size=, stride=)
-#        self.fc    = nn.Linear(, )
-#        self.out   = nn.Linear(, env_actions)
-#
-#    def forward(self, x):
-#        x = torch.nn.functional.relu(self.conv1(x))
-#        x = torch.nn.functional.relu(self.conv2(x))
-#        x = self.fc(x)
-#
-#        return self.out(x)
+""" 
+Network architecture used in the Nature paper
+The input to the network consists of an image with shape (1, 84, 84)
+""" 
+class DQN(nn.Module):
 
+    def __init__(self, env_actions):
+        super(DQN, self).__init__()
 
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.fc    = nn.Linear(3136, 512) # 64 x 7 x 7
+        self.out   = nn.Linear(512, env_actions)
 
-# another network class that takes as input a "frame" ???
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+        x = self.conv_to_fc(x)
+        x = F.relu(self.fc(x))
+
+        return self.out(x)
+
+    def conv_to_fc(self, x):
+        size = x.size()[1:] # all dimensions except batch dimension
+        num_features = 1
+        for s in size:
+            num_features *= s
+
+        return x.view(-1, num_features)

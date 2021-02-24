@@ -29,7 +29,6 @@ def epsilon_greedy(qstates_dict, state, eps, env_actions):
         return np.argmax(qvals)
 
 
-# epsilon_greedy function used specifically in dqn agent
 def epsilon_greedy(qnetwork, frame, eps, env_actions, device):
     prob = np.random.random()
 
@@ -59,23 +58,23 @@ def decay_epsilon(curr_eps, exploration_final_eps):
     return curr_eps * 0.996
 
 
-def get_frame(env):
-    # Returned screen requested by gym is 400x600x3, but is sometimes larger
-    # such as 800x1200x3. Transpose it into torch order (CHW) i.e (3, 400, 600)
-    screen = env.render(mode='rgb_array').transpose((2, 0, 1))
+def get_frame(env, device):
+    # Returned screen requested by gym is 400x600x3, but is sometimes larger such as 800x1200x3
+    # in general env.render(mode='rgb_array') returns a numpy.ndarray with shape (x, y, 3)
+    screen = env.render(mode='rgb_array')
     frame = cv2.cvtColor(screen, cv2.COLOR_RGB2GRAY)
     frame = cv2.resize(frame, (84, 84), interpolation=cv2.INTER_AREA)
-    frame = np.expand_dims(frame, -1)   # -> shape is (84, 84, 1)
-    frame = frame.transpose((2, 0, 1))
+    frame = np.expand_dims(frame, -1)   # convert into shape (84, 84, 1)
+    frame = frame.transpose((2, 0, 1))  # convert into torch shape (C, H, W) -> (1, 84, 84)
  
     ## Convert to float, rescale, convert to torch tensor
     ## (this doesn't require a copy)
-    frame = np.ascontiguousarray(screen, dtype=np.float32) / 255
+    #frame = frame.astype(np.float)
+    frame = np.ascontiguousarray(frame, dtype=np.float32) / 255
     frame = torch.from_numpy(frame)
-    ## Resize, and add a batch dimension (BCHW)
-    #return resize(screen).unsqueeze(0).to(device)
 
-    return frame
+    ## Resize, and add a batch dimension -> (B, C, H, W)
+    return frame.unsqueeze(0).to(device)
 
 
 def build_qnetwork(env_actions, learning_rate):
@@ -86,12 +85,21 @@ def build_qnetwork(env_actions, learning_rate):
 def fit(qnet, qnet_optim, qtarget_net, loss_func, 
         frames, actions, rewards, next_frames, dones, 
         gamma, env_actions):
-    q_t = qnet(frames)
-    q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1)
 
-    q_tp1 = qtarget_net(next_frames).detach()
-    q_tp1_best = torch.max(q_tp1, 1)
-    q_tp1_best = (torch.ones(dones.size(-1)) - dones) * q_tp1_best
+    # compute action-value for frames at timestep t using q-network
+    frames_t = torch.cat(frames)
+    actions = torch.cat(actions)
+    q_t = qnet(frames_t)
+    q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1) # the resulting tensor has size (batch, env_actions)
+
+    # compute td targets for frames at timestep t + 1 using q-target network
+    dones = torch.cat(dones)
+    rewards = torch.cat(rewards)
+    frames_tp1 = torch.cat(next_frames)
+    q_tp1 = qtarget_net(frames_tp1).detach()
+    q_tp1_best = torch.max(q_tp1, 1) # again, the resulting tensor has size (batch, env_actions)
+    ones = torch.ones(dones.size(-1), device="cuda:0")
+    q_tp1_best = (ones - dones) * q_tp1_best
     q_targets = rewards + gamma * q_tp1_best
 
     loss = loss_func(q_targets, q_t_selected)

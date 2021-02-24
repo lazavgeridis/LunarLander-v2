@@ -235,7 +235,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, render_freq=20):
 def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
                 memory_capacity=50000, train_freq=1, batch_size=32, \
                 learning_starts=1000, target_network_update_freq=500, \
-                print_freq=100, checkpoint_freq=10000):
+                print_freq=10, checkpoint_freq=10000):
     """
     print_freq: int
         how often to print out training progress
@@ -248,7 +248,7 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
 
     """
 
-    # decide which device we want to run on
+    # set decide to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss(reduction='sum') # or Huber loss
 
@@ -270,35 +270,35 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
     saved_mean_reward = None
 
     env.reset()
-    curr_frame = get_frame(env)
+    curr_frame = get_frame(env, device)
 
-    for t in range(total_timesteps * 100):
+    for t in range(total_timesteps * 10):
 
-        # choose action A using behaviour policy -> ε-greedy
-        # using q_network
-        action = epsilon_greedy(q_net, curr_frame, epsilon, env.action_space.n, device)
+        # choose action A using behaviour policy -> ε-greedy; use q-network
+        action = epsilon_greedy(qnet, curr_frame, epsilon, env.action_space.n, device)
         # take action A, earn immediate reward R and land into next state S'
         _, reward, done, _ = env.step(action.item())
-        reward = torch.Tensor([reward], device=device)
-        done = torch.Tensor([float(done)], device=device)
+        reward = torch.tensor([reward], device=device)
+        done = torch.tensor([float(done)], device=device)
 
-        next_frame = get_frame(env)
+        next_frame = get_frame(env, device)
 
         # store transition (S, A, R, S', Done) in replay memory
         replay_memory.store(curr_frame, action, reward, next_frame, done)
 
         curr_frame = next_frame
-        return_per_ep[-1] += reward
+        return_per_ep[-1] += reward.item()
 
         if done:
             curr_state = env.reset()
-            curr_frame = get_frame(env)
+            curr_frame = get_frame(env, device)
             return_per_ep.append(0.0)
             epsilon = decay_epsilon(epsilon, min_eps)
 
         # if replay memory currently stores > 'learning_starts' transitions,
         # sample a random mini-batch and update q_network's parameters
         if t > learning_starts and t % train_freq == 0:
+            print("Updating q-network...")
             frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
 
             fit(qnet, \
@@ -317,8 +317,8 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
         if t > learning_starts and t % target_network_update_freq == 0:
             update_target_network(qnet, qtarget_net)
 
-        mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
         num_episodes = len(return_per_ep)
+        mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
 
         if done and print_freq is not None and num_episodes % print_freq == 0:
             print("Time-steps: ", t)
@@ -328,7 +328,7 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
         if (checkpoint_freq is not None and t > learning_starts and num_episodes > 100 and t % checkpoint_freq == 0):
             if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
                 if print_freq is not None:
-                    print("Saving q-network due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
+                    print("Saving q-network due to mean reward increase: {} -> {} ...".format(saved_mean_reward, mean_100ep_reward))
                 torch.save(qnet.state_dict(), PATH + "qnet_{}".format(num_episodes))
                 #model_saved = True
                 saved_mean_reward = mean_100ep_reward
