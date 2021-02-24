@@ -12,6 +12,7 @@ Solved is 200 points.
 import gym
 import torch
 import collections
+import os
 import numpy as np
 from utils import *
 from exp_replay_memory import *
@@ -240,7 +241,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
     return return_per_ep
 
 
-def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
+def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 memory_capacity=50000, train_freq=1, batch_size=32, \
                 learning_starts=1000, target_network_update_freq=500, \
                 print_freq=20, checkpoint_freq=10000):
@@ -256,94 +257,92 @@ def dqn_lander(env, total_timesteps, gamma, lr, min_eps, \
 
     """
 
-    # set decide to run on
+    # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     loss_function = torch.nn.MSELoss(reduction='sum') # or Huber loss
 
-    # path to save q-network as it is improving its estimated q-values
-    PATH = "./models/"
+    # path to save checkpoints
+    PATH = "./checkpoints"
+    os.mkdir(PATH)
+    PATH = os.path.join(PATH, "ckeckpoint.pt")
 
     num_actions = env.action_space.n
 
     # set up the 2 q-networks, their optimizers and replay memory
+    # if there exists a saved checkpoint, load it up and resume training 
     qnet, qnet_optim = build_qnetwork(num_actions, lr)
-    qnet.to(device)
-    qnet.train()
     qtarget_net, _ = build_qnetwork(num_actions, lr)
     qtarget_net.load_state_dict(qnet.state_dict())
-    qtarget_net.to(device)
-    qtarget_net.eval()
+    start_episode = start_from_checkpoint(qnet, qnet_optim, qtarget_net, PATH)
+
+    qnet.to(device).train()
+    qtarget_net.to(device).eval()
     replay_memory = ReplayMemory(memory_capacity)
 
     epsilon = 1.0
     return_per_ep = [0.0]
     saved_mean_reward = None
+    t = 0
 
-    env.reset()
-    curr_frame = get_frame(env, device)
+    for i in range(start_episode, n_episodes, 1):
+        env.reset()
+        curr_frame = get_frame(env, device)
 
-    for t in range(total_timesteps * 10):
+        while True:
+            # choose action A using behaviour policy -> ε-greedy; use q-network
+            action = epsilon_greedy(qnet, curr_frame, epsilon, num_actions)
+            # take action A, earn immediate reward R and land into next state S'
+            _, reward, done, _ = env.step(action)
 
-        # choose action A using behaviour policy -> ε-greedy; use q-network
-        action = epsilon_greedy(qnet, curr_frame, epsilon, num_actions)
-        # take action A, earn immediate reward R and land into next state S'
-        _, reward, done, _ = env.step(action)
+            next_frame = get_frame(env, device)
 
-        next_frame = get_frame(env, device)
+            # store transition (S, A, R, S', Done) in replay memory
+            replay_memory.store(curr_frame, action, float(reward), next_frame, float(done))
 
-        # store transition (S, A, R, S', Done) in replay memory
-        replay_memory.store(curr_frame, action, float(reward), next_frame, float(done))
+            return_per_ep[-1] += reward
 
-        curr_frame = next_frame
-        return_per_ep[-1] += reward
+            # if replay memory currently stores > 'learning_starts' transitions, sample a random mini-batch and update q_network's parameters
+            if t > learning_starts and t % train_freq == 0:
+                frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
 
-        if done:
-            curr_state = env.reset()
-            curr_frame = get_frame(env, device)
-            return_per_ep.append(0.0)
-            epsilon = decay_epsilon(epsilon, min_eps)
+                #loss = 
+                fit(qnet, \
+                    qnet_optim, \
+                    qtarget_net, \
+                    loss_function, \
+                    frames, \
+                    actions, \
+                    rewards, \
+                    next_frames, \
+                    dones, \
+                    gamma, \
+                    num_actions, 
+                    device)
 
-        # if replay memory currently stores > 'learning_starts' transitions, sample a random mini-batch and update q_network's parameters
-        if t > learning_starts and t % train_freq == 0:
-            frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
+            # periodically update q-target network's parameters
+            if t > learning_starts and t % target_network_update_freq == 0:
+                update_target_network(qnet, qtarget_net)
 
-            fit(qnet, \
-                qnet_optim, \
-                qtarget_net, \
-                loss_function, \
-                frames, \
-                actions, \
-                rewards, \
-                next_frames, \
-                dones, \
-                gamma, \
-                num_actions, 
-                device)
+            mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
 
-        # periodically update q-target network's parameters
-        if t > learning_starts and t % target_network_update_freq == 0:
-            update_target_network(qnet, qtarget_net)
+            if done and print_freq is not None and (i + 1) % print_freq == 0:
+                print("\nTime-steps: ", t)
+                print("Episodes: ", i + 1)
+                print("Mean 100 episode reward: ", mean_100ep_reward)
 
-        num_episodes = len(return_per_ep)
-        mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
+            if (checkpoint_freq is not None and t > learning_starts and i + 1 > 100 and t % checkpoint_freq == 0):
+                if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
+                    if print_freq is not None:
+                        print("\nSaving checkpoint due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
+                    save_checkpoint(qnet, qnet_optim, qtarget_net, i, PATH)
+                    saved_mean_reward = mean_100ep_reward
 
-        if done and print_freq is not None and num_episodes % print_freq == 0:
-            print("\nTime-steps: ", t)
-            print("Episodes: ", num_episodes)
-            print("Mean 100 episode reward: ", mean_100ep_reward)
+            t += 1
+            if done:
+                return_per_ep.append(0.0)
+                epsilon = decay_epsilon(epsilon, min_eps)
+                break
 
-        if (checkpoint_freq is not None and t > learning_starts and num_episodes > 100 and t % checkpoint_freq == 0):
-            if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
-                if print_freq is not None:
-                    print("Saving q-network due to mean reward increase: {} -> {} ...".format(saved_mean_reward, mean_100ep_reward))
-                torch.save(qnet.state_dict(), PATH + "qnet_{}".format(num_episodes))
-                #model_saved = True
-                saved_mean_reward = mean_100ep_reward
-
-    # end of training loop
-    #if model_saved:
-    #    if print_freq is not None:
-    #        logger.log("Restored model with mean reward: {}".format(saved_mean_reward))
-    #    load_variables(model_file)
+            curr_frame = next_frame
 
     return return_per_ep

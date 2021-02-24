@@ -3,7 +3,8 @@ import gym
 import torch
 import cv2
 import random
-from deepq_network import *
+import os
+from deepq_network import DQN
 
 
 def discretize_state(state):
@@ -99,7 +100,31 @@ def fit(qnet, qnet_optim, qtarget_net, loss_func,
     qnet_optim.zero_grad()
     loss.backward()
     qnet_optim.step()
+    #return loss.item()
 
 
 def update_target_network(qnet, qtarget_net):
     qtarget_net.load_state_dict(qnet.state_dict())
+
+
+def save_checkpoint(qnet, qnet_optim, qtarget_net, episode, path):
+    state_dict = {
+            'episode': episode,
+            'qnet': qnet.state_dict(),
+            'qnet_optim': qnet_optim.state_dict(),
+            'qtarget_net': qtarget_net.state_dict(),
+    }
+    torch.save(state_dict, path)
+
+
+def start_from_checkpoint(qnet, qnet_optim, qtarget_net, path):
+    episode = 0
+    if os.path.isfile(path): 
+        state_dict = torch.load(path)
+        episode = state_dict['episode']
+        qnet.load_state_dict(state_dict['qnet'])
+        qnet_optim.load_state_dict(state_dict['qnet_optim'])
+        qtarget_net.load_state_dict(state_dict['qtarget_net'])
+        print('Starting from episode {}'.format(episode))
+
+    return episode
