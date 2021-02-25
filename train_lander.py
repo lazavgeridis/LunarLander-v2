@@ -58,14 +58,15 @@ def main():
 
     environment.close()
 
+    # plot reward per episode for each agent
     n = int(args.n_episodes / 100)
     for agent, agent_total_returns in zip(chosen_agents, agents_returns):
+        print(len(agent_total_returns))
         print("\n{} lander average reward = {}".format(agent, sum(agent_total_returns) / args.n_episodes))
         l = []
         for j in range(n):
             l.append(round(np.mean(agent_total_returns[j * 100 : (j + 1) * 100]), 1))
         plt.plot(range(int(args.n_episodes / 100)), l)
-
 
     plt.xlabel("Episodes")
     plt.ylabel("Reward per episode")

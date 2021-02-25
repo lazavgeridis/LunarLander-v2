@@ -15,12 +15,17 @@ import collections
 import os
 import numpy as np
 from utils import *
-from exp_replay_memory import *
+from exp_replay_memory import ReplayMemory
 
 
 """
 render_freq: int
     render the environment every 'render_freq' episodes
+
+print_freq: int
+    how often to print out training progress
+    if None disable printing
+
 """
 
 def random_lander(env, n_episodes, print_freq=20, render_freq=20):
@@ -81,7 +86,7 @@ def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
             action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
     
             # take action A, earn immediate reward and land into next state S'
-            observation, reward, done, info = env.step(action)
+            observation, reward, done, _ = env.step(action)
     
             qstate = curr_state + (action, )
             episode_qstates.append(qstate)
@@ -130,9 +135,9 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq
         else:
             render = False
 
-        # Current State: S
-        # Choose A using policy π
+        # Initial episode state: S
         curr_state = discretize_state(env.reset())
+        # Choose A from S using policy π
         action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
         
         while True:
@@ -144,13 +149,12 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq
 
             # Take action A, earn immediate reward R and land into next state S'
             # S --> A --> R --> S'
-            observation, reward, done, info = env.step(action)
+            observation, reward, done, _ = env.step(action)
             next_state = discretize_state(observation)
 
             # Next State: S'
-            # Choose A' using policy π
-            next_action = epsilon_greedy(q_states, next_state, epsilon,
-                    num_actions)
+            # Choose A' from S' using policy π
+            next_action = epsilon_greedy(q_states, next_state, epsilon, num_actions)
 
             # create (S', A') pair
             new_qstate = next_state + (next_action, )
@@ -196,14 +200,14 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
         else:
             render = False
 
-        # Current State: S
+        # Initial episode state: S
         curr_state = discretize_state(env.reset())
         
         while True:
             if render:
                 env.render()
 
-            # choose action A using behaviour policy -> ε-greedy
+            # choose action A from S using behaviour policy -> ε-greedy
             action = epsilon_greedy(q_states, curr_state, epsilon, num_actions)
 
             # Create (S, A) pair
@@ -211,7 +215,7 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
 
             # Take action A, earn immediate reward R and land into next state S'
             # S --> A --> R --> S'
-            observation, reward, done, info = env.step(action)
+            observation, reward, done, _ = env.step(action)
             next_state = discretize_state(observation)
 
             ###################################################################
@@ -243,13 +247,9 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
 
 def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 memory_capacity=50000, train_freq=1, batch_size=32, \
-                learning_starts=1000, target_network_update_freq=500, \
-                print_freq=20, checkpoint_freq=10000):
+                learning_starts=1000, target_network_update_freq=1000, \
+                print_freq=20, save_freq=1000):
     """
-    print_freq: int
-        how often to print out training progress
-        if None disable printing
-
     checkpoint_freq: int
         how often to save the model. This is so that the best version is restored 
         at the end of the training. If you do not wish to restore the best version at 
@@ -259,49 +259,42 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
 
     # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    loss_function = torch.nn.MSELoss(reduction='sum') # or Huber loss
+    #loss_function = torch.nn.MSELoss() # or Huber loss
+    #loss_function = torch.nn.functional.smooth_l1_loss()     # or Huber loss
 
     # path to save checkpoints
-    PATH = "./checkpoints"
-    os.mkdir(PATH)
-    PATH = os.path.join(PATH, "ckeckpoint.pt")
+    PATH = "./models"
+    if not os.path.isdir(PATH):
+        os.mkdir(PATH)
 
     num_actions = env.action_space.n
-
-    # set up the 2 q-networks, their optimizers and replay memory
-    # if there exists a saved checkpoint, load it up and resume training 
-    qnet, qnet_optim = build_qnetwork(num_actions, lr)
-    qtarget_net, _ = build_qnetwork(num_actions, lr)
+    qnet, qnet_optim = build_qnetwork(num_actions, lr, device)
+    qtarget_net, _ = build_qnetwork(num_actions, lr, device)
     qtarget_net.load_state_dict(qnet.state_dict())
-    start_episode = start_from_checkpoint(qnet, qnet_optim, qtarget_net, PATH)
-
-    qnet.to(device).train()
-    qtarget_net.to(device).eval()
+    qnet.train()
+    qtarget_net.eval()
     replay_memory = ReplayMemory(memory_capacity)
 
-    epsilon = 1.0
-    return_per_ep = [0.0]
+    epsilon = 1.0 
+    return_per_ep = [0.0] 
     saved_mean_reward = None
     t = 0
 
-    for i in range(start_episode, n_episodes, 1):
+    for i in range(n_episodes):
         env.reset()
-        curr_frame = get_frame(env, device)
+        curr_frame = get_frame(env)
 
         while True:
             # choose action A using behaviour policy -> ε-greedy; use q-network
-            action = epsilon_greedy(qnet, curr_frame, epsilon, num_actions)
+            action = epsilon_greedy(qnet, curr_frame.to(device), epsilon, num_actions)
             # take action A, earn immediate reward R and land into next state S'
             _, reward, done, _ = env.step(action)
-
-            next_frame = get_frame(env, device)
-
+            next_frame = get_frame(env)
             # store transition (S, A, R, S', Done) in replay memory
             replay_memory.store(curr_frame, action, float(reward), next_frame, float(done))
 
-            return_per_ep[-1] += reward
-
-            # if replay memory currently stores > 'learning_starts' transitions, sample a random mini-batch and update q_network's parameters
+            # if replay memory currently stores > 'learning_starts' transitions,
+            # sample a random mini-batch and update q_network's parameters
             if t > learning_starts and t % train_freq == 0:
                 frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
 
@@ -309,7 +302,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 fit(qnet, \
                     qnet_optim, \
                     qtarget_net, \
-                    loss_function, \
+                    #loss_function, \
                     frames, \
                     actions, \
                     rewards, \
@@ -323,24 +316,29 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
             if t > learning_starts and t % target_network_update_freq == 0:
                 update_target_network(qnet, qtarget_net)
 
-            mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
-
-            if done and print_freq is not None and (i + 1) % print_freq == 0:
-                print("\nTime-steps: ", t)
-                print("Episodes: ", i + 1)
-                print("Mean 100 episode reward: ", mean_100ep_reward)
-
-            if (checkpoint_freq is not None and t > learning_starts and i + 1 > 100 and t % checkpoint_freq == 0):
-                if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
-                    if print_freq is not None:
-                        print("\nSaving checkpoint due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
-                    save_checkpoint(qnet, qnet_optim, qtarget_net, i, PATH)
-                    saved_mean_reward = mean_100ep_reward
-
             t += 1
+            return_per_ep[-1] += reward
+
             if done:
+                if (i + 1) % print_freq == 0:
+                    print("\nEpisode: {}".format(i + 1))
+                    print("Episode return : {}".format(return_per_ep[-1]))
+                    print("Total time-steps: {}".format(t))
+
+                if (i + 1) % 100 == 0:
+                    mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
+                    print("Last 100 episodes mean reward: {}".format(mean_100ep_reward))
+
+                if t > learning_starts and (i + 1) % save_freq == 0:
+                    if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
+                        if print_freq is not None:
+                            print("\nSaving both q-networks due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
+                        save_models(qnet, qtarget_net, i + 1, PATH)
+                        saved_mean_reward = mean_100ep_reward
+
                 return_per_ep.append(0.0)
                 epsilon = decay_epsilon(epsilon, min_eps)
+
                 break
 
             curr_frame = next_frame

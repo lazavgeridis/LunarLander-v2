@@ -4,7 +4,7 @@ import torch
 import cv2
 import random
 import os
-from deepq_network import DQN
+from deepq_network import DQN, DQN2
 
 
 def discretize_state(state):
@@ -26,8 +26,9 @@ def epsilon_greedy(q_func, state, eps, env_actions):
     if prob < eps:
         return random.choice(range(env_actions))
     else:
-        if isinstance(q_func, DQN):
-            return q_func(state).max(1)[1].item()
+        if isinstance(q_func, DQN) or isinstance(q_func, DQN2):
+            with torch.no_grad():
+                return q_func(state).max(1)[1].item()
         else:
             qvals = [q_func[state + (action, )] for action in range(env_actions)]
             return np.argmax(qvals)
@@ -53,7 +54,7 @@ def decay_epsilon(curr_eps, exploration_final_eps):
     return curr_eps * 0.996
 
 
-def get_frame(env, device):
+def get_frame(env):
     # Returned screen requested by gym is 400x600x3, but is sometimes larger such as 800x1200x3
     # in general env.render(mode='rgb_array') returns a numpy.ndarray with shape (x, y, 3)
     screen = env.render(mode='rgb_array')
@@ -67,21 +68,21 @@ def get_frame(env, device):
     frame = np.ascontiguousarray(frame, dtype=np.float32) / 255
     frame = torch.from_numpy(frame)
 
-    ## Resize, and add a batch dimension -> (B, C, H, W)
-    return frame.unsqueeze(0).to(device)
+    # Add a batch dimension -> (B, C, H, W)
+    return frame.unsqueeze(0)
 
 
-def build_qnetwork(env_actions, learning_rate):
-    qnet = DQN(env_actions)
-    return qnet, torch.optim.RMSprop(qnet.parameters(), lr=learning_rate)
+def build_qnetwork(env_actions, learning_rate, device):
+    qnet = DQN2(env_actions)
+    return qnet.to(device), torch.optim.RMSprop(qnet.parameters(), lr=learning_rate)
 
 
-def fit(qnet, qnet_optim, qtarget_net, loss_func, 
+def fit(qnet, qnet_optim, qtarget_net, #loss_func, 
         frames, actions, rewards, next_frames, dones, 
         gamma, env_actions, device):
 
     # compute action-value for frames at timestep t using q-network
-    frames_t = torch.cat(frames)
+    frames_t = torch.cat(frames).to(device)
     actions = torch.tensor(actions, device=device)
     q_t = qnet(frames_t)
     q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1) # the resulting tensor has size (batch, env_actions)
@@ -89,16 +90,18 @@ def fit(qnet, qnet_optim, qtarget_net, loss_func,
     # compute td targets for frames at timestep t + 1 using q-target network
     dones = torch.tensor(dones, device=device)
     rewards = torch.tensor(rewards, device=device)
-    frames_tp1 = torch.cat(next_frames)
+    frames_tp1 = torch.cat(next_frames).to(device)
     q_tp1_best = qtarget_net(frames_tp1).max(1)[0].detach() # again, the resulting tensor has size (batch, env_actions)
     ones = torch.ones(dones.size(-1), device=device)
-    dones_mask = ones - dones
     q_tp1_best = (ones - dones) * q_tp1_best
     q_targets = rewards + gamma * q_tp1_best
 
-    loss = loss_func(q_targets, q_t_selected)
+    #loss = loss_func(q_t_selected, q_targets)
+    loss = torch.nn.functional.smooth_l1_loss(q_t_selected, q_targets)
     qnet_optim.zero_grad()
     loss.backward()
+    for param in qnet.parameters():
+        param.grad.data.clamp_(-1, 1)
     qnet_optim.step()
     #return loss.item()
 
@@ -107,24 +110,36 @@ def update_target_network(qnet, qtarget_net):
     qtarget_net.load_state_dict(qnet.state_dict())
 
 
-def save_checkpoint(qnet, qnet_optim, qtarget_net, episode, path):
-    state_dict = {
-            'episode': episode,
-            'qnet': qnet.state_dict(),
-            'qnet_optim': qnet_optim.state_dict(),
-            'qtarget_net': qtarget_net.state_dict(),
-    }
-    torch.save(state_dict, path)
+def save_models(qnet, qtarget_net, episode, path):
+    torch.save(qnet.state_dict(), os.path.join(path, 'qnetwork_{}'.format(episode)))
+    torch.save(qtarget_net.state_dict(), os.path.join(path, 'qtarget_network_{}'.format(episode)))
 
 
-def start_from_checkpoint(qnet, qnet_optim, qtarget_net, path):
-    episode = 0
-    if os.path.isfile(path): 
-        state_dict = torch.load(path)
-        episode = state_dict['episode']
-        qnet.load_state_dict(state_dict['qnet'])
-        qnet_optim.load_state_dict(state_dict['qnet_optim'])
-        qtarget_net.load_state_dict(state_dict['qtarget_net'])
-        print('Starting from episode {}'.format(episode))
-
-    return episode
+#def save_checkpoint(qnet, qnet_optim, qtarget_net, episode, eps, return_per_ep, path):
+#    state_dict = {
+#            'episode': episode,
+#            'epsilon': eps, 
+#            'rewards': return_per_ep,
+#            'qnet': qnet.state_dict(),
+#            'qnet_optim': qnet_optim.state_dict(),
+#            'qtarget_net': qtarget_net.state_dict()
+#    }
+#    torch.save(state_dict, path)
+#
+#
+#def load_checkpoint(qnet, qnet_optim, qtarget_net, path):
+#    episode = 0
+#    epsilon = None
+#    rewards = None
+#    if os.path.isfile(path): 
+#        state_dict = torch.load(path)
+#        episode = state_dict['episode'] + 1
+#        epsilon = state_dict['epsilon']
+#        rewards = state_dict['rewards']
+#        qnet.load_state_dict(state_dict['qnet'])
+#        qnet_optim.load_state_dict(state_dict['qnet_optim'])
+#        qtarget_net.load_state_dict(state_dict['qtarget_net'])
+#        print('Starting from episode {} and epsilon={}, with mean 100 episode reward={}'\
+#                        .format(episode, epsilon, round(np.mean(rewards[-101:-1]), 1)))
+#
+#    return (episode, epsilon, rewards)
