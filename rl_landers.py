@@ -10,7 +10,7 @@ Solved is 200 points.
 """
 
 import gym
-import torch
+import torch 
 import collections
 import os
 import numpy as np
@@ -246,21 +246,14 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
 
 
 def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
-                memory_capacity=50000, train_freq=1, batch_size=32, \
-                learning_starts=1000, target_network_update_freq=1000, \
-                print_freq=20, save_freq=1000):
-    """
-    checkpoint_freq: int
-        how often to save the model. This is so that the best version is restored 
-        at the end of the training. If you do not wish to restore the best version at 
-        the end of the training, set this variable to None.
-
-    """
+                batch_size=32, memory_capacity=50000, \
+                network='linear', learning_starts=1000, \
+                train_freq=1, target_network_update_freq=1000, \
+                print_freq=20, render_freq=20, save_freq=1000):
 
     # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #loss_function = torch.nn.MSELoss() # or Huber loss
-    #loss_function = torch.nn.functional.smooth_l1_loss()     # or Huber loss
+    loss_function = torch.nn.MSELoss() # or Huber loss
 
     # path to save checkpoints
     PATH = "./models"
@@ -268,8 +261,9 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
         os.mkdir(PATH)
 
     num_actions = env.action_space.n
-    qnet, qnet_optim = build_qnetwork(num_actions, lr, device)
-    qtarget_net, _ = build_qnetwork(num_actions, lr, device)
+    input_shape = env.observation_space.shape[-1]
+    qnet, qnet_optim = build_qnetwork(num_actions, lr, input_shape, network, device)
+    qtarget_net, _ = build_qnetwork(num_actions, lr, input_shape, network, device)
     qtarget_net.load_state_dict(qnet.state_dict())
     qnet.train()
     qtarget_net.eval()
@@ -281,32 +275,42 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
     t = 0
 
     for i in range(n_episodes):
-        env.reset()
-        curr_frame = get_frame(env)
+        curr_state = env.reset()
+        curr_state = np.expand_dims(curr_state, 0)
+        curr_state = torch.from_numpy(curr_state)
+        if (i + 1) % render_freq == 0:
+            render = True
+        else:
+            render = False
 
         while True:
+            if render:
+                env.render()
+
             # choose action A using behaviour policy -> ε-greedy; use q-network
-            action = epsilon_greedy(qnet, curr_frame.to(device), epsilon, num_actions)
+            action = epsilon_greedy(qnet, curr_state.to(device), epsilon, num_actions)
             # take action A, earn immediate reward R and land into next state S'
-            _, reward, done, _ = env.step(action)
-            next_frame = get_frame(env)
+            next_state, reward, done, _ = env.step(action)
+            #next_frame = get_frame(env)
+            next_state = np.expand_dims(next_state, 0)
+            next_state = torch.from_numpy(next_state)
             # store transition (S, A, R, S', Done) in replay memory
-            replay_memory.store(curr_frame, action, float(reward), next_frame, float(done))
+            replay_memory.store(curr_state, action, float(reward), next_state, float(done))
 
             # if replay memory currently stores > 'learning_starts' transitions,
             # sample a random mini-batch and update q_network's parameters
             if t > learning_starts and t % train_freq == 0:
-                frames, actions, rewards, next_frames, dones = replay_memory.sample_minibatch(batch_size)
+                states, actions, rewards, next_states, dones = replay_memory.sample_minibatch(batch_size)
 
                 #loss = 
                 fit(qnet, \
                     qnet_optim, \
                     qtarget_net, \
-                    #loss_function, \
-                    frames, \
+                    loss_function, \
+                    states, \
                     actions, \
                     rewards, \
-                    next_frames, \
+                    next_states, \
                     dones, \
                     gamma, \
                     num_actions, 
@@ -331,9 +335,8 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
 
                 if t > learning_starts and (i + 1) % save_freq == 0:
                     if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:
-                        if print_freq is not None:
-                            print("\nSaving both q-networks due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
-                        save_models(qnet, qtarget_net, i + 1, PATH)
+                        print("\nSaving model due to mean reward increase: {} -> {}".format(saved_mean_reward, mean_100ep_reward))
+                        save_model(qnet, i + 1, PATH)
                         saved_mean_reward = mean_100ep_reward
 
                 return_per_ep.append(0.0)
@@ -341,6 +344,6 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
 
                 break
 
-            curr_frame = next_frame
+            curr_state = next_state
 
     return return_per_ep

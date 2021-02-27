@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--agents', '--list', nargs='+', help='algorithm(s) of choice to train lander', required=True)
     parser.add_argument('--n_episodes', type=int, help='number of training episodes', required=True)
     parser.add_argument('--lr', type=float, help='learning rate used in sarsa, q-learning, dqn', required=True)
-    parser.add_argument('--gamma', type=float, help='discount factor, should be 0 < gamma < 1', required=True)
+    parser.add_argument('--gamma', type=float, help='discount rate, should be 0 < gamma < 1', required=True)
     parser.add_argument('--final_eps', type=float, help='decay epsilon unti it reaches its \'final_eps\' value', required=True)
     args = parser.parse_args()
 
@@ -58,15 +58,19 @@ def main():
 
     environment.close()
 
+    #####################################################################################################
     # plot reward per episode for each agent
-    n = int(args.n_episodes / 100)
+    # maybe make a function for that ???
+    win = 100
+    n = int(args.n_episodes / win)
     for agent, agent_total_returns in zip(chosen_agents, agents_returns):
         print(len(agent_total_returns))
         print("\n{} lander average reward = {}".format(agent, sum(agent_total_returns) / args.n_episodes))
         l = []
         for j in range(n):
             l.append(round(np.mean(agent_total_returns[j * 100 : (j + 1) * 100]), 1))
-        plt.plot(range(int(args.n_episodes / 100)), l)
+        plt.plot(range(0, args.n_episodes, win), l)
+    ######################################################################################################
 
     plt.xlabel("Episodes")
     plt.ylabel("Reward per episode")

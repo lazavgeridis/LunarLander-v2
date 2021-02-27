@@ -3,13 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 """ 
-Network architecture used in the Nature paper
-The input to the network consists of an image with shape (1, 84, 84)
+1) CNN Network architecture used in the Nature paper
+   The input to the network consists of an image with shape (1, 84, 84)
+2) Linear Mapping Network
+   The input to the network consists of the observation/state vector
 """ 
-class DQN(nn.Module):
+class CNN(nn.Module):
 
     def __init__(self, env_actions):
-        super(DQN, self).__init__()
+        super(CNN, self).__init__()
 
         self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
@@ -34,28 +36,18 @@ class DQN(nn.Module):
 
         return x.view(-1, num_features)
 
-class DQN2(nn.Module):
 
-    def __init__(self, env_actions):
-        super(DQN2, self).__init__()
-
-        self.fc1 = nn.Linear(84 * 84, 64)
+class LinearMapNet(nn.Module):
+    def __init__(self, input_shape, env_actions):
+        super(LinearMapNet, self).__init__()
+        self.fc1 = nn.Linear(input_shape, 64)
         self.fc2 = nn.Linear(64, 64)
         self.fc3 = nn.Linear(64, 256)
         self.out = nn.Linear(256, env_actions)
 
     def forward(self, x):
-        x = self.conv_to_fc(x)
         x = torch.tanh(self.fc1(x))
         x = torch.tanh(self.fc2(x))
         x = F.relu(self.fc3(x))
 
         return self.out(x)
-
-    def conv_to_fc(self, x):
-        size = x.size()[1:] # all dimensions except batch dimension
-        num_features = 1
-        for s in size:
-            num_features *= s
-
-        return x.view(-1, num_features)
