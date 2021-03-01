@@ -27,7 +27,6 @@ def epsilon_greedy(q_func, state, eps, env_actions):
         return random.choice(range(env_actions))
     elif isinstance(q_func, CNN) or isinstance(q_func, LinearMapNet):
         with torch.no_grad():
-            action_vals = q_func(state)
             return q_func(state).max(1)[1].item()
     else:
         qvals = [q_func[state + (action, )] for action in range(env_actions)]
@@ -76,12 +75,15 @@ def build_qnetwork(env_actions, learning_rate, input_shape, network, device):
     if network == 'cnn':
         qnet = DQN(env_actions)
     else:
+        # model = 'linear'
         qnet = LinearMapNet(input_shape, env_actions)
     return qnet.to(device), torch.optim.RMSprop(qnet.parameters(), lr=learning_rate)
 
 
-def fit(qnet, qnet_optim, qtarget_net, loss_func, 
-        frames, actions, rewards, next_frames, dones, 
+def fit(qnet, qnet_optim, qtarget_net, \
+        #loss_func, \
+        frames, actions, \
+        rewards, next_frames, dones, \
         gamma, env_actions, device):
 
     # compute action-value for frames at timestep t using q-network
@@ -99,8 +101,8 @@ def fit(qnet, qnet_optim, qtarget_net, loss_func,
     q_tp1_best = (ones - dones) * q_tp1_best
     q_targets = rewards + gamma * q_tp1_best
 
-    loss = loss_func(q_t_selected, q_targets)
-    #loss = torch.nn.functional.smooth_l1_loss(q_t_selected, q_targets)
+    #loss = loss_func(q_t_selected, q_targets)
+    loss = torch.nn.functional.smooth_l1_loss(q_t_selected, q_targets)
     qnet_optim.zero_grad()
     loss.backward()
     #for param in qnet.parameters():
@@ -113,5 +115,5 @@ def update_target_network(qnet, qtarget_net):
     qtarget_net.load_state_dict(qnet.state_dict())
 
 
-def save_models(qnet, episode, path):
+def save_model(qnet, episode, path):
     torch.save(qnet.state_dict(), os.path.join(path, 'qnetwork_{}.pt'.format(episode)))

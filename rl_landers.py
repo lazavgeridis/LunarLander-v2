@@ -23,12 +23,11 @@ render_freq: int
     render the environment every 'render_freq' episodes
 
 print_freq: int
-    how often to print out training progress
-    if None disable printing
+    print out training progress every 'print_freq' episodes 
 
 """
 
-def random_lander(env, n_episodes, print_freq=20, render_freq=20):
+def random_lander(env, n_episodes, print_freq=500, render_freq=500):
     return_per_ep = [0.0]
 
     for i in range(n_episodes):
@@ -43,7 +42,7 @@ def random_lander(env, n_episodes, print_freq=20, render_freq=20):
             if render:
                 env.render()
             action = env.action_space.sample()
-            observation, reward, done, info = env.step(action)
+            observation, reward, done, _ = env.step(action)
             return_per_ep[-1] += reward
     
             if done:
@@ -60,7 +59,7 @@ def random_lander(env, n_episodes, print_freq=20, render_freq=20):
     return return_per_ep
 
 
-def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
+def mc_lander(env, n_episodes, gamma, min_eps, print_freq=200, render_freq=200):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     n_visits = collections.defaultdict(int)     # note that the first insertion of a key initializes its value to 0
     return_per_ep = [0.0]
@@ -70,7 +69,6 @@ def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
     num_actions = env.action_space.n
 
     for i in range(n_episodes):
-        total_return = 0
         t = 0
         curr_state = discretize_state(env.reset())
         if (i + 1) % render_freq == 0:
@@ -99,15 +97,20 @@ def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
     
             if done:
                 if (i + 1) % print_freq == 0:
-                    print("Episode finished after {} timesteps".format(t+1))
-                    print("Episode {}: Total return {}".format(i + 1, return_per_ep[-1]))
+                    print("\nEpisode finished after {} timesteps".format(t+1))
+                    print("Episode {}: Total return = {}".format(i + 1, return_per_ep[-1]))
                     print("Total keys in q_states dictionary = {}".format(len(q_states)))
-                    print("Total keys in n_visits dictionary = {}\n".format(len(n_visits)))
+                    print("Total keys in n_visits dictionary = {}".format(len(n_visits)))
+
+                if (i + 1) % 100 == 0:
+                    mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
+                    print("Last 100 episodes mean reward: {}".format(mean_100ep_reward))
     
-                # improve policy only when episode is completed
-                # policy evaluation step
+                ############# policy evaluation step ######################################
+                # improve policy only when episode has terminated
                 for step, qstate in enumerate(episode_qstates):
                     q_states[qstate] += (discounted_return(episode_return[step: ], gamma) - q_states[qstate]) / n_visits[qstate]
+                ###########################################################################
 
                 epsilon = decay_epsilon(epsilon, min_eps)
                 return_per_ep.append(0.0)
@@ -122,7 +125,7 @@ def mc_lander(env, n_episodes, gamma, min_eps, print_freq=20, render_freq=20):
     return return_per_ep
 
 
-def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq=20):
+def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=200, render_freq=200):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
@@ -171,9 +174,13 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq
 
             if done:
                 if (i + 1) % print_freq == 0:
-                    print("Episode finished after {} timesteps".format(t + 1))
+                    print("\nEpisode finished after {} timesteps".format(t + 1))
                     print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
-                    print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
+                    print("Total keys in q_states dictionary = {}".format(len(q_states)))
+
+                if (i + 1) % 100 == 0:
+                    mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
+                    print("Last 100 episodes mean reward: {}".format(mean_100ep_reward))
 
                 epsilon = decay_epsilon(epsilon, min_eps)
                 return_per_ep.append(0.0)
@@ -187,7 +194,7 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq
     return return_per_ep
 
 
-def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_freq=20):
+def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=200, render_freq=200):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
@@ -230,9 +237,13 @@ def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=20, render_
 
             if done:
                 if (i + 1) % print_freq == 0:
-                    print("Episode finished after {} timesteps".format(t + 1))
+                    print("\nEpisode finished after {} timesteps".format(t + 1))
                     print("Episode {}: Total Return = {}".format(i + 1, return_per_ep[-1]))
-                    print("Total keys in q_states dictionary = {}\n".format(len(q_states)))
+                    print("Total keys in q_states dictionary = {}".format(len(q_states)))
+
+                if (i + 1) % 100 == 0:
+                    mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
+                    print("Last 100 episodes mean reward: {}".format(mean_100ep_reward))
 
                 epsilon = decay_epsilon(epsilon, min_eps)
                 return_per_ep.append(0.0)
@@ -249,11 +260,11 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 batch_size=32, memory_capacity=50000, \
                 network='linear', learning_starts=1000, \
                 train_freq=1, target_network_update_freq=1000, \
-                print_freq=20, render_freq=20, save_freq=1000):
+                print_freq=200, render_freq=200, save_freq=1000):
 
     # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    loss_function = torch.nn.MSELoss() # or Huber loss
+    #loss_function = torch.nn.MSELoss() # or Huber loss
 
     # path to save checkpoints
     PATH = "./models"
@@ -306,7 +317,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 fit(qnet, \
                     qnet_optim, \
                     qtarget_net, \
-                    loss_function, \
+                    #loss_function, \
                     states, \
                     actions, \
                     rewards, \
@@ -331,7 +342,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
 
                 if (i + 1) % 100 == 0:
                     mean_100ep_reward = round(np.mean(return_per_ep[-101:-1]), 1)
-                    print("Last 100 episodes mean reward: {}".format(mean_100ep_reward))
+                    print("\nLast 100 episodes mean reward: {}".format(mean_100ep_reward))
 
                 if t > learning_starts and (i + 1) % save_freq == 0:
                     if saved_mean_reward is None or mean_100ep_reward > saved_mean_reward:

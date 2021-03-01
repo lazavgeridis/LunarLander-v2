@@ -9,19 +9,13 @@ import numpy as np
 AGENTS_LIST = ["random", "monte-carlo", "sarsa", "q-learning", "dqn"]
 
 def main():
-
     parser = argparse.ArgumentParser()
-    parser.add_argument('--agents', '--list', nargs='+', help='algorithm(s) of choice to train lander', required=True)
-    parser.add_argument('--n_episodes', type=int, help='number of training episodes', required=True)
-    parser.add_argument('--lr', type=float, help='learning rate used in sarsa, q-learning, dqn', required=True)
-    parser.add_argument('--gamma', type=float, help='discount rate, should be 0 < gamma < 1', required=True)
-    parser.add_argument('--final_eps', type=float, help='decay epsilon unti it reaches its \'final_eps\' value', required=True)
+    parser.add_argument('--agents', nargs='+', help='algorithm(s) of choice to train lander', choices=AGENTS_LIST, required=True)
+    parser.add_argument('--n_episodes', type=int, help='number of training episodes', default=10000, required=False)                            # default number of episodes is 10000
+    parser.add_argument('--lr', type=float, help='step-size (or learning rate) used in sarsa, q-learning, dqn', default=1e-3, required=False)   # default step-size is 0.001
+    parser.add_argument('--gamma', type=float, help='discount rate, should be 0 < gamma < 1', default=0.99, required=False)                     # default gamma is 0.99
+    parser.add_argument('--final_eps', type=float, help='decay epsilon unti it reaches its \'final_eps\' value', default=1e-2, required=False)  # default final eploration epsilon is 0.01
     args = parser.parse_args()
-
-    for agent in args.agents:
-        if agent not in AGENTS_LIST:
-            print("Invalid algorithm...\nValid options: {}".format(AGENTS_LIST), file=sys.stderr)
-            sys.exit(-1)
 
     environment = gym.make("LunarLander-v2")
     chosen_agents = []
@@ -34,22 +28,26 @@ def main():
             print("Done!")
 
         elif agent == "monte-carlo":
-            print("\nTraining Monte-Carlo lander ...")
+            print("\nTraining Monte-Carlo lander with arguments num_episodes={}, gamma={}, final_epsilon={} ..."\
+                            .format(args.n_episodes, args.gamma, args.final_eps))
             total_rewards = mc_lander(environment, args.n_episodes, args.gamma, args.final_eps)
             print("Done!")
 
         elif agent == "sarsa":
-            print("\nTraining Sarsa lander ...")
+            print("\nTraining Sarsa lander with arguments num_episodes={}, step-size={}, gamma={}, final_epsilon={} ..."\
+                            .format(args.n_episodes, args.lr, args.gamma, args.final_eps))
             total_rewards  = sarsa_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
 
         elif agent == "q-learning":
-            print("\nTraining Q-learning lander ...")
+            print("\nTraining Q-learning lander with arguments num_episodes={}, step-size={}, gamma={}, final_epsilon={} ..."\
+                            .format(args.n_episodes, args.lr, args.gamma, args.final_eps))
             total_rewards = qlearning_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
 
         elif agent == "dqn":
-            print("\nTraining dqn lander ...")
+            print("\nTraining DQN lander with arguments num_episodes={}, learning rate={}, gamma={}, final_epsilon={} ..."\
+                            .format(args.n_episodes, args.lr, args.gamma, args.final_eps))
             total_rewards = dqn_lander(environment, args.n_episodes, args.gamma, args.lr, args.final_eps)
             print("Done!")
 

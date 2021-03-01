@@ -12,7 +12,6 @@ class CNN(nn.Module):
 
     def __init__(self, env_actions):
         super(CNN, self).__init__()
-
         self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)

@@ -1,5 +1,5 @@
 # Introduction  
-Implementing various rl algorithms for solving the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) openai gym
+Implementing various rl algorithms for solving the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) OpenAI Gym
 environment. For the time being, there are implementations for:  
 1. Monte-Carlo 
 2. Sarsa
@@ -8,4 +8,10 @@ environment. For the time being, there are implementations for:
 
 # Training Clips
 This one is for mc at around 3000 episodes...  
-![mc-3000eps](mc_3000.gif)
+![mc-3000eps](mc_3000.gif)  
+
+
+# Implementation References  
+1. [OpenAI baselines](https://github.com/openai/baselines)
+2. [Reinforcement Learning (DQN) Tutorial](https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html)
+3. [Solving The Lunar Lander Problem under Uncertainty using Reinforcement Learning](https://arxiv.org/abs/2011.11850)
