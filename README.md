@@ -11,7 +11,8 @@ Below, you can find some training clips for each agent. These are captured
 towards the end of the training phase (~10000 epsiodes). A random agent is also
 provided for comparison:  
 
-**Random**
+**Random**  
+![random](data/random.gif)
 
 **Monte-Carlo**  
 ![monte-carlo](data/monte_carlo.gif)  
@@ -26,6 +27,10 @@ provided for comparison:
 
 
 **DQN**
+![]()
+
+
+# Experiments
 
 
 # Execution
@@ -40,7 +45,7 @@ python train.py --agents random sarsa q-learning dqn
 this will train each agent separately with the default values, which are
 `n_episodes=10000`, `lr=0.001`, `gamma=0.99`, `final_eps=0.01`.  
 
-For a more custom execution, you can implicitly provide the value for each
+For a more custom execution, you can explicitly provide the value for each
 argument. For example, to only train a sarsa agent:
 
 ```
@@ -49,7 +54,7 @@ python train.py --agents sarsa --n_episodes 5000 --lr 0.01 --gamma 0.99 --final_
 
 After training a dqn agent, you can test how well it generalizes using:
 ```
-python autopilot.py <num_episodes> path/to/model.pt
+python autopilot.py <num_episodes> path/*/qnetwork_{*}.pt
 ```
 
 and compare it to a random agent:
