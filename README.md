@@ -57,7 +57,7 @@ python autopilot.py <num_episodes> models/*/qnetwork_{*}.pt
 ```  
 To compare dqn to a random agent:
 ```
-python random.py <num_episodes>
+python random_agent.py <num_episodes>
 ```
 - Note: [LunarLander-v2/models/pretrained/qnetwork_2000.pt](models/pretrained/qnetwork_2000.pt) lands the lunar lander optimally 95% of the time
 
