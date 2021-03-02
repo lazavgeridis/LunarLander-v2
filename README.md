@@ -7,8 +7,28 @@ environment. For the time being, there are implementations for:
 4. DQN
 
 # Training Clips
-This one is for mc at around 3000 episodes...  
-![mc-3000eps](mc_3000.gif)  
+Below, you can find some training clips for each agent. These are captured
+towards the end of the training phase (~10000 epsiodes). A random agent is also
+provided for comparison:  
+
+**Random**
+
+**Monte-Carlo**  
+![monte-carlo](monte_carlo.gif)  
+
+
+**Sarsa**
+![sarsa](sarsa.gif)  
+
+
+**Q-learning**
+![q-learning](qlearning.gif)
+
+
+**DQN**
+
+
+# Execution
 
 
 # Implementation References  

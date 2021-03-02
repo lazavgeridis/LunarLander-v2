@@ -1,9 +1,10 @@
-import numpy as np
 import gym
 import torch
 import cv2
 import random
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 from deepq_network import CNN, LinearMapNet
 
 
@@ -117,3 +118,20 @@ def update_target_network(qnet, qtarget_net):
 
 def save_model(qnet, episode, path):
     torch.save(qnet.state_dict(), os.path.join(path, 'qnetwork_{}.pt'.format(episode)))
+
+
+def plot_rewards(chosen_agents, agents_returns, num_episodes, window):
+    num_intervals = int(num_episodes / window)
+    for agent, agent_total_returns in zip(chosen_agents, agents_returns):
+        print(len(agent_total_returns))
+        print("\n{} lander average reward = {}".format(agent, sum(agent_total_returns) / num_episodes))
+        l = []
+        for j in range(num_intervals):
+            l.append(round(np.mean(agent_total_returns[j * 100 : (j + 1) * 100]), 1))
+        plt.plot(range(0, num_episodes, window), l)
+
+    plt.xlabel("Episodes")
+    plt.ylabel("Reward per {} episodes".format(window))
+    plt.title("RL Lander(s)")
+    plt.legend(chosen_agents, loc="lower right")
+    plt.show()
