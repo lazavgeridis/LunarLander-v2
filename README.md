@@ -14,15 +14,15 @@ provided for comparison:
 **Random**
 
 **Monte-Carlo**  
-![monte-carlo](monte_carlo.gif)  
+![monte-carlo](data/monte_carlo.gif)  
 
 
 **Sarsa**
-![sarsa](sarsa.gif)  
+![sarsa](data/sarsa.gif)  
 
 
 **Q-learning**
-![q-learning](qlearning.gif)
+![q-learning](data/qlearning.gif)
 
 
 **DQN**
