@@ -72,6 +72,13 @@ def get_frame(env):
     return frame.unsqueeze(0)
 
 
+def lmn_input(obs):
+    net_input = np.expand_dims(obs, 0)
+    net_input = torch.from_numpy(net_input)
+
+    return net_input
+
+
 def build_qnetwork(env_actions, learning_rate, input_shape, network, device):
     if network == 'cnn':
         qnet = DQN(env_actions)
@@ -81,33 +88,29 @@ def build_qnetwork(env_actions, learning_rate, input_shape, network, device):
     return qnet.to(device), torch.optim.RMSprop(qnet.parameters(), lr=learning_rate)
 
 
-def fit(qnet, qnet_optim, qtarget_net, \
-        #loss_func, \
-        frames, actions, \
-        rewards, next_frames, dones, \
+def fit(qnet, qnet_optim, qtarget_net, loss_func, \
+        frames, actions, rewards, next_frames, dones, \
         gamma, env_actions, device):
 
     # compute action-value for frames at timestep t using q-network
     frames_t = torch.cat(frames).to(device)
     actions = torch.tensor(actions, device=device)
-    q_t = qnet(frames_t)
-    q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1) # the resulting tensor has size (batch, env_actions)
+    q_t = qnet(frames_t) # q_t tensor has shape (batch, env_actions)
+    q_t_selected = torch.sum(q_t * torch.nn.functional.one_hot(actions, env_actions), 1) 
 
     # compute td targets for frames at timestep t + 1 using q-target network
     dones = torch.tensor(dones, device=device)
     rewards = torch.tensor(rewards, device=device)
     frames_tp1 = torch.cat(next_frames).to(device)
-    q_tp1_best = qtarget_net(frames_tp1).max(1)[0].detach() # again, the resulting tensor has size (batch, env_actions)
+    q_tp1_best = qtarget_net(frames_tp1).max(1)[0].detach() 
     ones = torch.ones(dones.size(-1), device=device)
     q_tp1_best = (ones - dones) * q_tp1_best
     q_targets = rewards + gamma * q_tp1_best
 
-    #loss = loss_func(q_t_selected, q_targets)
-    loss = torch.nn.functional.smooth_l1_loss(q_t_selected, q_targets)
+    # td error
+    loss = loss_func(q_t_selected, q_targets)
     qnet_optim.zero_grad()
     loss.backward()
-    #for param in qnet.parameters():
-    #    param.grad.data.clamp_(-1, 1)
     qnet_optim.step()
     #return loss.item()
 

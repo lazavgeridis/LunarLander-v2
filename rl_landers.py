@@ -264,7 +264,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
 
     # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    #loss_function = torch.nn.MSELoss() # or Huber loss
+    loss_function = torch.nn.MSELoss()
 
     # path to save checkpoints
     PATH = "./models"
@@ -286,9 +286,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
     t = 0
 
     for i in range(n_episodes):
-        curr_state = env.reset()
-        curr_state = np.expand_dims(curr_state, 0)
-        curr_state = torch.from_numpy(curr_state)
+        curr_state = lmn_input(env.reset())
         if (i + 1) % render_freq == 0:
             render = True
         else:
@@ -303,8 +301,8 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
             # take action A, earn immediate reward R and land into next state S'
             next_state, reward, done, _ = env.step(action)
             #next_frame = get_frame(env)
-            next_state = np.expand_dims(next_state, 0)
-            next_state = torch.from_numpy(next_state)
+            next_state = lmn_input(next_state)
+
             # store transition (S, A, R, S', Done) in replay memory
             replay_memory.store(curr_state, action, float(reward), next_state, float(done))
 
@@ -312,12 +310,11 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
             # sample a random mini-batch and update q_network's parameters
             if t > learning_starts and t % train_freq == 0:
                 states, actions, rewards, next_states, dones = replay_memory.sample_minibatch(batch_size)
-
                 #loss = 
                 fit(qnet, \
                     qnet_optim, \
                     qtarget_net, \
-                    #loss_function, \
+                    loss_function, \
                     states, \
                     actions, \
                     rewards, \

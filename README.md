@@ -1,5 +1,5 @@
 # Introduction  
-Implementing various rl algorithms for solving the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) OpenAI Gym
+In this project you can find implementation of rl algorithms for solving the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) OpenAI Gym
 environment. For the time being, there are implementations for:  
 1. Monte-Carlo 
 2. Sarsa
@@ -7,8 +7,7 @@ environment. For the time being, there are implementations for:
 4. DQN
 
 # Training Clips
-Below, you can find some training clips for each agent. These are captured
-towards the end of the training phase (~10000 epsiodes). A random agent is also
+These training snapshots are captured towards the end of the training phase (~10000 epsiodes). A random agent is also
 provided for comparison:  
 
 **Random**  
@@ -27,14 +26,15 @@ provided for comparison:
 
 
 **DQN**
-![]()
+![dqn](dqn.gif)
 
 
 # Experiments
+**In progress**
 
 
 # Execution
-The purpose of this project is to compare the effectiveness of each
+The purpose of this project is to compare the performance of each
 reinforcement learning algorithm implemented. So, for a complete comparison,
 meaning that all of the above agents are trained during program execution, run the
 following:
@@ -42,25 +42,25 @@ following:
 ```
 python train.py --agents random sarsa q-learning dqn
 ```
-this will train each agent separately with the default values, which are
+this will train each agent separately using default values, which are
 `n_episodes=10000`, `lr=0.001`, `gamma=0.99`, `final_eps=0.01`.  
 
 For a more custom execution, you can explicitly provide the value for each
-argument. For example, to only train a sarsa agent:
+argument. For example, to only train a dqn agent:
 
 ```
-python train.py --agents sarsa --n_episodes 5000 --lr 0.01 --gamma 0.99 --final_eps 0.02
+python train.py --agents dqn --n_episodes 3000 --lr 0.0001 --gamma 0.99 --final_eps 0.02
 ```
 
 After training a dqn agent, you can test how well it generalizes using:
 ```
-python autopilot.py <num_episodes> path/*/qnetwork_{*}.pt
-```
-
-and compare it to a random agent:
+python autopilot.py <num_episodes> models/*/qnetwork_{*}.pt
+```  
+To compare dqn to a random agent:
 ```
 python random.py <num_episodes>
 ```
+- Note: [LunarLander-v2/models/pretrained/qnetwork_2000.pt](models/pretrained/qnetwork_2000.pt) lands the lunar lander optimally 95% of the time
 
 
 # Implementation References  
