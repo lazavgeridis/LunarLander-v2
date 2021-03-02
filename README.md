@@ -25,7 +25,7 @@ provided for comparison:
 ![q-learning](data/qlearning.gif)
 
 
-**DQN**
+**DQN**  
 ![dqn](data/dqn.gif)
 
 
