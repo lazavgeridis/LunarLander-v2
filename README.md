@@ -17,11 +17,11 @@ provided for comparison:
 ![monte-carlo](data/monte_carlo.gif)  
 
 
-**Sarsa**
+**Sarsa**  
 ![sarsa](data/sarsa.gif)  
 
 
-**Q-learning**
+**Q-learning**  
 ![q-learning](data/qlearning.gif)
 
 
@@ -29,6 +29,15 @@ provided for comparison:
 
 
 # Execution
+The purpose of this project is to compare the effectiveness of each
+reinforcement learning algorithm implemented. So, for a complete comparison,
+meaning that all of the above agents are trained during program execution, run the
+following:
+
+```
+python train.py --agents random sarsa q-learning dqn
+```
+this will train each agent separately with the default values, which are 
 
 
 # Implementation References  
