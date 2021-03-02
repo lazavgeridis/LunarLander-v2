@@ -44,7 +44,7 @@ python train.py --agents random sarsa q-learning dqn
 this will train each agent separately using default values, which are
 `n_episodes=10000`, `lr=0.001`, `gamma=0.99`, `final_eps=0.01`.  
 
-For a more custom execution, you can explicitly provide the value for each
+For a more customized execution, you can explicitly provide the value for each
 argument. For example, to only train a dqn agent:
 
 ```
