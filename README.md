@@ -1,5 +1,5 @@
 # Introduction  
-In this project you can find implementation of rl algorithms for solving the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) OpenAI Gym
+Attempting to solve the [LunarLander-v2](https://gym.openai.com/envs/LunarLander-v2/) OpenAI Gym
 environment. For the time being, there are implementations for:  
 1. Monte-Carlo 
 2. Sarsa
@@ -34,9 +34,8 @@ provided for comparison:
 
 
 # Execution
-The purpose of this project is to compare the performance of each
-reinforcement learning algorithm implemented. So, for a complete comparison,
-meaning that all of the above agents are trained during program execution, run the
+The purpose of this project is to compare the performance of the rl algorithms implemented. So, for a 
+complete comparison, meaning that all of the above agents are trained during program execution, run the
 following:
 
 ```
