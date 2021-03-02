@@ -26,7 +26,7 @@ provided for comparison:
 
 
 **DQN**
-![dqn](dqn.gif)
+![dqn](data/dqn.gif)
 
 
 # Experiments
