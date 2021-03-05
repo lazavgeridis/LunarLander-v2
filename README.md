@@ -30,7 +30,13 @@ provided for comparison:
 
 
 # Experiments
-**In progress**
+1. `lr=0.1`  
+![all_agents_lr01](all_lr01.png)  
+2. `lr=0.01`  
+![all_agents_lr001](all_lr001.png)  
+3. `lr=0.001`  
+![all_agents_lr0001](all_lr0001.png)
+
 
 
 # Execution

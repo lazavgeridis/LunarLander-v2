@@ -59,7 +59,7 @@ def random_lander(env, n_episodes, print_freq=500, render_freq=500):
     return return_per_ep
 
 
-def mc_lander(env, n_episodes, gamma, min_eps, print_freq=200, render_freq=200):
+def mc_lander(env, n_episodes, gamma, min_eps, print_freq=500, render_freq=500):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     n_visits = collections.defaultdict(int)     # note that the first insertion of a key initializes its value to 0
     return_per_ep = [0.0]
@@ -125,7 +125,7 @@ def mc_lander(env, n_episodes, gamma, min_eps, print_freq=200, render_freq=200):
     return return_per_ep
 
 
-def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=200, render_freq=200):
+def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=500, render_freq=500):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
@@ -194,7 +194,7 @@ def sarsa_lander(env, n_episodes, gamma, lr, min_eps, print_freq=200, render_fre
     return return_per_ep
 
 
-def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=200, render_freq=200):
+def qlearning_lander(env, n_episodes, gamma, lr, min_eps, print_freq=500, render_freq=500):
     q_states = collections.defaultdict(float)   # note that the first insertion of a key initializes its value to 0.0
     return_per_ep = [0.0]
     epsilon = 1.0
@@ -260,7 +260,7 @@ def dqn_lander(env, n_episodes, gamma, lr, min_eps, \
                 batch_size=32, memory_capacity=50000, \
                 network='linear', learning_starts=1000, \
                 train_freq=1, target_network_update_freq=1000, \
-                print_freq=200, render_freq=200, save_freq=1000):
+                print_freq=500, render_freq=500, save_freq=1000):
 
     # set device to run on
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
