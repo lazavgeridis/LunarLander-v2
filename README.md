@@ -37,14 +37,14 @@ provided for comparison:
 3. `lr=0.001`  
 ![all_agents_lr0001](data/all_lr0001.png)  
 
-For the 3 experiments conducted above, we present the average reward of each rl algorithm (calculated for 10000 episodes of training)
+For the 3 experiments conducted above, we compute the average reward of each rl algorithm (averaged across 10000 episodes of training)
 
-|             | Learning rate=0.1 | Learning rate=0.01 |
-| ---------   | ----------------- | ------------------ |
-| Monte-Carlo | -23.134           |                    |
-| Sarsa       |                   |                    |
-| Q-learning  |                   |                    |
-| DQN         |                   |                    |
+|             | Learning rate=0.1 | Learning rate=0.01 | Learning rate=0.001 |
+| ---------   | ----------------- | ------------------ | ------------------- |
+| Monte-Carlo | -23.134           | **-53.209**        | -44.191             |
+| Sarsa       | 95.445            | -55.731            | -182.449            |
+| Q-learning  | **95.793**        | -77.473            | -173.590            |
+| DQN         | -150.694          | -70.869            | **206.948**         |
 
 
 
