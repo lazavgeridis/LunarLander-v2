@@ -37,7 +37,9 @@ provided for comparison:
 3. `lr=0.001`  
 ![all_agents_lr0001](data/all_lr0001.png)  
 
-For the 3 experiments conducted above, we compute the average reward of each rl algorithm (averaged across 10000 episodes of training)
+Note that the value of learning rate (equivalently the constant step-size parameter) only affects the performance of Sarsa, Q-learning and DQN. The Monte-Carlo variant implemented here is 
+called **Every Visit** Monte-Carlo and it uses a true running average in the policy evaluation step. Subsequently, learning rate does not have any effect on the algorithm's training progress.  
+For the 3 experiments conducted above, we compute the average reward for each rl algorithm (averaged across 10000 episodes of training)
 
 |             | Learning rate=0.1 | Learning rate=0.01 | Learning rate=0.001 |
 | ---------   | ----------------- | ------------------ | ------------------- |
@@ -54,7 +56,7 @@ complete comparison, meaning that all of the above agents are trained during pro
 following:
 
 ```
-python train.py --agents random sarsa q-learning dqn
+python train.py --agents random monte-carlo sarsa q-learning dqn
 ```
 this will train each agent separately using default values, which are
 `n_episodes=10000`, `lr=0.001`, `gamma=0.99`, `final_eps=0.01`.  
@@ -74,7 +76,7 @@ To compare dqn to a random agent:
 ```
 python random_agent.py <num_episodes>
 ```
-- Note: [LunarLander-v2/models/pretrained/qnetwork_2000.pt](models/pretrained/qnetwork_2000.pt) lands the lunar lander optimally 95% of the time
+- [LunarLander-v2/models/pretrained/qnetwork_2000.pt](models/pretrained/qnetwork_2000.pt) lands the lunar lander optimally 95% of the time
 
 
 # Implementation References  
