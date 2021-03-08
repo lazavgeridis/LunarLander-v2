@@ -81,7 +81,7 @@ def lmn_input(obs):
 
 def build_qnetwork(env_actions, learning_rate, input_shape, network, device):
     if network == 'cnn':
-        qnet = DQN(env_actions)
+        qnet = CNN(env_actions)
     else:
         # model = 'linear'
         qnet = LinearMapNet(input_shape, env_actions)
